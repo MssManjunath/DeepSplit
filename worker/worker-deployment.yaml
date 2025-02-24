@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demucs-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demucs-worker
+  template:
+    metadata:
+      labels:
+        app: demucs-worker
+    spec:
+      containers:
+      - name: worker
+        image: rishikesh54/demucs-worker:latest
+        env:
+        - name: REDIS_HOST
+          value: "redis"
+        - name: MINIO_SERVER_HOST
+          value: "minio-proj.minio-ns.svc.cluster.local"
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: accesskey 
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: secretkey
+        volumeMounts:
+        - name: worker-temp-volume
+          mountPath: /tmp
+      volumes:
+      - name: worker-temp-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demucs-worker
+  namespace: minio-ns
+spec:
+  selector:
+    app: demucs-worker
+  ports:
+    - protocol: TCP
+      port: 80  # Expose port (optional)
+      targetPort: 80
+  type: ClusterIP  # Can be changed based on access needs
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-secrets
+  namespace: minio-ns
